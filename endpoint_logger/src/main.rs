@@ -1,10 +1,18 @@
-use anyhow::Ok;
 use tokio::net::TcpListener;
 use endpoint_logger::run;
+use dotenvy::dotenv;
+mod config;
+use crate::config::AppConfig;
+
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:3000").await.expect("Failed to bind address");
-    run(listener).await?;
+    // Load .env
+    dotenv().ok();
+    let config = AppConfig::from_env();
+
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", config.port)).await.expect("Failed to bind address");
+    let handle = run(listener).await?;
+    handle.await?;
     Ok(())
 }

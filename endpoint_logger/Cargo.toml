@@ -16,6 +16,7 @@ name = "endpoint_logger"
 [dependencies]
 anyhow = "1.0.100"
 axum = "0.8.8"
+dotenvy = "0.15.7"
 tokio = { version = "1.49.0", features = ["full"] }
 tracing = "0.1.44"
 tracing-log = "0.2.0"

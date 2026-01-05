@@ -1,0 +1,25 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug",
+            "program": "${workspaceFolder}/endpoint_logger/target/debug/endpoint_logger",
+            "args": [],
+            "cwd": "${workspaceFolder}/endpoint_logger",
+            "preLaunchTask": "cargo build"
+        },
+        {
+            "type": "lldb",
+            "request": "attach",
+            "name": "Attach to Process",
+            "program": "${workspaceFolder}/endpoint_logger/target/debug/endpoint_logger",
+            "pid": "${command:pickProcess}",
+            "cwd": "${workspaceFolder}/endpoint_logger"
+        }
+    ]
+}

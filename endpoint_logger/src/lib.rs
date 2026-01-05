@@ -1,6 +1,6 @@
 use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
-use axum::{Router, http::StatusCode, response::IntoResponse, routing::get, serve::Listener};
+use axum::{Router, http::StatusCode, response::IntoResponse, routing::get};
 
 pub async fn health_check() -> impl IntoResponse {
     StatusCode::OK
