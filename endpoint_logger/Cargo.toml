@@ -1,0 +1,14 @@
+[package]
+name = "endpoint_logger"
+version = "0.1.0"
+edition = "2024"
+
+[target.x86_64-unkown-linux-gnu]
+rustflags = ["-C", "linker=clang", "-C", "link-arg=-fuse-ld=lld"]
+
+[dependencies]
+axum = "0.8.8"
+tokio = { version = "1.49.0", features = ["full"] }
+tracing = "0.1.44"
+tracing-log = "0.2.0"
+tracing-subscriber = { version = "0.3.22", features = ["fmt", "env-filter", "json"] }
