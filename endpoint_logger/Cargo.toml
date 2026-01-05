@@ -6,9 +6,20 @@ edition = "2024"
 [target.x86_64-unkown-linux-gnu]
 rustflags = ["-C", "linker=clang", "-C", "link-arg=-fuse-ld=lld"]
 
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+path = "src/main.rs"
+name = "endpoint_logger"
+
 [dependencies]
+anyhow = "1.0.100"
 axum = "0.8.8"
 tokio = { version = "1.49.0", features = ["full"] }
 tracing = "0.1.44"
 tracing-log = "0.2.0"
 tracing-subscriber = { version = "0.3.22", features = ["fmt", "env-filter", "json"] }
+
+[dev-dependencies]
+reqwest = "0.13.1"
