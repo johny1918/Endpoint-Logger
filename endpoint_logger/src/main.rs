@@ -2,6 +2,7 @@ use tokio::net::TcpListener;
 use endpoint_logger::run;
 use dotenvy::dotenv;
 mod config;
+mod utils;
 use crate::config::AppConfig;
 
 
