@@ -1,0 +1,34 @@
+# Default settings that can be overwritten by args or .env
+
+[proxy]
+listen_port = 3000
+target_url = "http://localhost:80"
+
+[dashboard]
+port = 8080
+auto_open_browser = true
+
+[logging]
+level = "standard"  # minimal, standard, verbose
+log_request_body = true
+log_response_body = true
+max_body_size_kb = 100
+stream_large_bodies = true
+
+[storage]
+type = "sqlite"  # or "json"
+database_path = "./endpoint-logs.db"
+retention_days = 7
+max_entries = 50000
+auto_cleanup = true
+
+[privacy]
+redact_patterns = []
+ignore_paths = ["/health", "/metrics", "/favicon.ico"]
+anonymize_ip = false
+never_log_bodies_for = ["/api/login", "/api/register"]
+
+[performance]
+max_concurrent_requests = 1000
+request_timeout_seconds = 30
+connection_pool_size = 100
