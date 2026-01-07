@@ -1,0 +1,35 @@
+# Endpoint Logger Configuration File
+# This file contains all configuration options for the Endpoint Logger
+# Save this as "endpoint-logger.toml" in your working directory
+
+# Target application URL (REQUIRED)
+# The application you want to monitor and proxy requests to
+target_url = "http://localhost:8080"
+
+# Proxy server port (Optional, default: 3000)
+# The port where the Endpoint Logger proxy will listen
+proxy_port = 3000
+
+# Database file path (Optional, default: ./endpoint-logs.db)
+# Where to store the captured logs
+database_path = "./endpoint-logs.db"
+
+# Future sections (not yet implemented in MVP):
+#
+# [logging]
+# level = "standard"  # minimal, standard, verbose
+# log_request_body = true
+# log_response_body = true
+# max_body_size_kb = 100
+#
+# [dashboard]
+# port = 8080
+# auto_open_browser = true
+#
+# [storage]
+# retention_days = 7
+# max_entries = 50000
+#
+# [privacy]
+# redact_patterns = ["password", "token", "secret"]
+# ignore_paths = ["/health", "/metrics"]
