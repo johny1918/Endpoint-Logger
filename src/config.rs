@@ -426,8 +426,10 @@ mod tests {
 
     #[test]
     fn test_from_env_with_defaults() {
-        // Set only required TARGET_URL
+        // Clean environment first
         unsafe {
+            std::env::remove_var("PORT");
+            std::env::remove_var("DATABASE_PATH");
             std::env::set_var("TARGET_URL", "http://localhost:8080");
         }
 
@@ -532,8 +534,9 @@ database_path = "./toml.db"
         let test_file = "test-priority.toml";
         fs::write(test_file, toml_content).expect("Failed to write test file");
 
-        // Set ENV variables (should override TOML)
+        // Clean environment first, then set ENV variables (should override TOML)
         unsafe {
+            std::env::remove_var("DATABASE_PATH");
             std::env::set_var("TARGET_URL", "http://env-target:8080");
             std::env::set_var("PORT", "5000");
         }
