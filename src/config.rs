@@ -294,7 +294,8 @@ impl AppConfig {
                     println!("HTTP Logger start configuration: \r
                         Semantic Version: {} \r
                         Proxy Port: {} \r
-                        Target URL: {}", 
+                        Target URL: {} \r
+                        Ready", 
                         version, self.proxy_port, self.target_url
                     );
                     info!("HTTP Logger start configuration: : \
