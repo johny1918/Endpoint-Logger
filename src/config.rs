@@ -561,4 +561,16 @@ database_path = "./toml.db"
         }
         fs::remove_file(test_file).ok();
     }
+
+    #[test]
+    fn test_print_config_used() {
+        let config = AppConfig {
+            target_url: "http://test-target.com".to_string(),
+            proxy_port: 4000,
+            database_path: "./test-db.db".to_string(),
+            verbose: true,
+        };
+        config.print_config_used();
+        // Test passes if no panic
+    }
 }
