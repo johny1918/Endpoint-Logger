@@ -22,4 +22,8 @@ pub enum AppError {
     ValidateURLConfig(String),
     #[error("Fail to validate PORT: {0}")]
     ValidatePORTConfig(String),
+    #[error("Fail to init the logger")]
+    LoggerInitFail,
+    #[error("Fail to read Cargo.toml")]
+    CargoTomlError,
 }

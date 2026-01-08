@@ -3,6 +3,8 @@ use std::fs;
 use std::path::Path;
 use clap::Parser;
 use serde::{Deserialize, Serialize};
+use tracing::info;
+use toml;
 use url::Url;
 
 use crate::utils::errors::AppError;
@@ -277,6 +279,38 @@ impl AppConfig {
             )));
         }
         Ok(())
+    }
+
+    pub fn print_config_used(&self) {
+        let cargo_content = fs::read_to_string("./Cargo.toml")
+            .map_err(|_| AppError::CargoTomlError);
+        match cargo_content {
+            Ok(content) => {
+                if let Ok(toml_value) = toml::from_str::<toml::Value>(&content) {
+                    let version = toml_value.get("package")
+                        .and_then(|p| p.get("version"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown");
+                    println!("HTTP Logger start configuration: \r
+                        Semantic Version: {} \r
+                        Proxy Port: {} \r
+                        Target URL: {}", 
+                        version, self.proxy_port, self.target_url
+                    );
+                    info!("HTTP Logger start configuration: : \
+                        Semantic Version: {} \
+                        Proxy Port: {} \
+                        Target URL: {}", 
+                        version, self.proxy_port, self.target_url
+                    );
+                } else {
+                    info!("Failed to parse Cargo.toml");
+                }
+            }
+            Err(_) => {
+                info!("Failed to read Cargo.toml");
+            }
+        }
     }
 }
 

@@ -24,7 +24,7 @@ tokio = { version = "1.49.0", features = ["full"] }
 toml = "0.8"
 tracing = "0.1.44"
 tracing-log = "0.2.0"
-tracing-subscriber = { version = "0.3.22", features = ["fmt", "env-filter", "json"] }
+tracing-subscriber = { version = "0.3", features = ["fmt", "json"] }
 url = "2.5.8"
 
 [dev-dependencies]
