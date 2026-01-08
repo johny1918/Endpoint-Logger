@@ -5,6 +5,8 @@ use clap::Parser;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+use crate::utils::errors::AppError;
+
 /// Command-line arguments
 /// Only essential flags that users commonly override
 #[derive(Parser, Debug)]
@@ -101,7 +103,7 @@ impl AppConfig {
     /// Priority: CLI > ENV > TOML > Defaults
     ///
     /// This is the main entry point for loading configuration
-    pub fn load() -> Result<Self, String> {
+    pub fn load() -> Result<Self, AppError> {
         // Parse CLI arguments first
         let cli_args = CliArgs::parse();
 
@@ -117,22 +119,22 @@ impl AppConfig {
             config = config.merge_toml(toml_config);
         } else if cli_args.config.is_some() {
             // User explicitly specified a config file that doesn't exist
-            return Err(format!(
+            return Err(AppError::ConfigMissing(format!(
                 "Configuration file not found: {}\n\
                  Make sure the file exists or remove the --config flag.",
                 toml_path
-            ));
+            )));
         }
         // If default config file doesn't exist, that's fine - just skip it
 
         // 2. Merge environment variables (only the 3 essential ones)
-        config = config.merge_env()?;
+        config = config.merge_env().map_err(|e| AppError::MergeEnvError(e.to_string()))?;
 
         // 3. Merge CLI arguments (only the 5 essential flags)
         config = config.merge_cli(cli_args);
 
         // 4. Validate final configuration
-        config.validate()?;
+        config.validate().map_err(|e| AppError::ValidateConfigError(e.to_string()))?;
 
         Ok(config)
     }
@@ -140,7 +142,7 @@ impl AppConfig {
     /// Load configuration from environment variables only
     /// This implements EP-001-01: Basic Configuration Structure
     #[allow(dead_code)] // Used in tests
-    pub fn from_env() -> Result<Self, String> {
+    pub fn from_env() -> Result<Self, AppError> {
         let mut config = Self::default();
         config = config.merge_env()?;
         config.validate()?;
@@ -148,12 +150,12 @@ impl AppConfig {
     }
 
     /// Load TOML configuration from file
-    fn load_from_toml(path: &str) -> Result<TomlConfig, String> {
+    fn load_from_toml(path: &str) -> Result<TomlConfig, AppError> {
         let contents = fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read config file '{}': {}", path, e))?;
+            .map_err(|e| AppError::ReadConfigTomlError(format!("Failed to read config file '{}': {}", path, e)))?;
 
         toml::from_str(&contents)
-            .map_err(|e| format!("Failed to parse TOML config file '{}': {}", path, e))
+            .map_err(|e| AppError::ReadConfigTomlError(format!("Failed to parse TOML config file '{}': {}", path, e)))
     }
 
     /// Merge TOML configuration
@@ -173,17 +175,17 @@ impl AppConfig {
 
     /// Merge environment variables
     /// ENV values override TOML/defaults
-    fn merge_env(mut self) -> Result<Self, String> {
+    fn merge_env(mut self) -> Result<Self, AppError> {
         if let Ok(target) = env::var("TARGET_URL") {
             self.target_url = target;
         }
 
         if let Ok(port_str) = env::var("PORT") {
             self.proxy_port = port_str.parse::<u16>()
-                .map_err(|_| format!(
+                .map_err(|_| AppError::MergeEnvError(format!(
                     "Invalid PORT environment variable: '{}'. Must be a number between 1 and 65535.",
                     port_str
-                ))?;
+                )))?;
         }
 
         if let Ok(database) = env::var("DATABASE_PATH") {
@@ -213,66 +215,66 @@ impl AppConfig {
 
     /// Validate the configuration
     /// Checks that required fields are set and values are valid
-    pub fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self) -> Result<(), AppError> {
         // Check that target_url is not empty (it's required)
         if self.target_url.is_empty() {
-            return Err(
+            return Err(AppError::ValidateConfigError(
                 "Target URL is required.\n\
                  Provide it via:\n\
                  - CLI: endpoint-logger --target http://localhost:8080\n\
                  - ENV: export TARGET_URL=http://localhost:8080\n\
                  - TOML: target_url = \"http://localhost:8080\" in endpoint-logger.toml"
                     .to_string()
-            );
+            ));
         }
 
         // Validate URL format
-        self.validate_url()?;
+        self.validate_url().map_err(|e| AppError::ValidateConfigError(e.to_string()))?;
 
         // Validate port range
-        self.validate_port()?;
+        self.validate_port().map_err(|e| AppError::ValidateConfigError(e.to_string()))?;
 
         Ok(())
     }
 
     /// Validate URL format (must be http:// or https://)
-    fn validate_url(&self) -> Result<(), String> {
+    fn validate_url(&self) -> Result<(), AppError> {
         match Url::parse(&self.target_url) {
             Ok(url) => {
                 if url.scheme() == "http" || url.scheme() == "https" {
                     if url.host_str().is_some() {
                         Ok(())
                     } else {
-                        Err(format!(
+                        Err(AppError::ValidateURLConfig(format!(
                             "Invalid target URL: '{}' - URL must have a valid host.\n\
                              Example: http://localhost:8080",
                             self.target_url
-                        ))
+                        )))
                     }
                 } else {
-                    Err(format!(
+                    Err(AppError::ValidateURLConfig(format!(
                         "Invalid target URL: '{}' - URL must start with http:// or https://.\n\
                          Example: http://localhost:8080",
                         self.target_url
-                    ))
+                    )))
                 }
             }
-            Err(_) => Err(format!(
+            Err(_) => Err(AppError::ValidateURLConfig(format!(
                 "Invalid target URL format: '{}'.\n\
                  URL must be valid and start with http:// or https://.\n\
                  Example: http://localhost:8080",
                 self.target_url
-            )),
+            ))),
         }
     }
 
     /// Validate port range (1-65535)
-    fn validate_port(&self) -> Result<(), String> {
+    fn validate_port(&self) -> Result<(), AppError> {
         if self.proxy_port == 0 {
-            return Err(format!(
+            return Err(AppError::ValidatePORTConfig(format!(
                 "Invalid port: {}. Port must be between 1 and 65535.",
                 self.proxy_port
-            ));
+            )));
         }
         Ok(())
     }
