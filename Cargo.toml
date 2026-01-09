@@ -2,6 +2,12 @@
 name = "endpoint_logger"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+authors = ["Ioan A."]
+description = "A privacy-first HTTP request logger that acts as a reverse proxy"
+repository = "https://github.com/johny1918/endpoint-logger"
+keywords = ["http", "proxy", "logger", "debugging", "monitoring"]
+categories = ["development-tools", "network-programming"]
 
 [target.x86_64-unknown-linux-gnu]
 rustflags = ["-C", "linker=clang", "-C", "link-arg=-fuse-ld=lld"]
