@@ -26,4 +26,6 @@ pub enum AppError {
     LoggerInitFail,
     #[error("Fail to read Cargo.toml")]
     CargoTomlError,
+    #[error("Graceful shutdown error: {0}")]
+    GracefulShutdownError(String)
 }

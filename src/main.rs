@@ -1,5 +1,5 @@
 use tokio::net::TcpListener;
-use endpoint_logger::run;
+use endpoint_logger::{run, graceful_shutdown};
 use dotenvy::dotenv;
 mod config;
 mod utils;
@@ -27,8 +27,9 @@ async fn main() -> anyhow::Result<()> {
     
 
     // Bind to proxy server port
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", config.proxy_port)).await.expect("Failed to bind address");
+    let listener = TcpListener::bind(format!("0.0.0.0:{}", config.proxy_port)).await.expect("Failed to bind address");
     let handle = run(listener).await?;
     handle.await?;
+    graceful_shutdown().await?;
     Ok(())
 }
