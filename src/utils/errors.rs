@@ -10,4 +10,22 @@ pub enum AppError {
     InvalidPortRange,
     #[error("Invalid URL Format")]
     InvalidURLFormat,
+    #[error("Config error: {0}")]
+    ConfigMissing(String),
+    #[error("Merge config error: {0}")]
+    MergeEnvError(String),
+    #[error("Fail to validate config file: {0}")]
+    ValidateConfigError(String),
+    #[error("Fail to read toml config: {0}")]
+    ReadConfigTomlError(String),
+    #[error("Fail to validate URL: {0}")]
+    ValidateURLConfig(String),
+    #[error("Fail to validate PORT: {0}")]
+    ValidatePORTConfig(String),
+    #[error("Fail to init the logger")]
+    LoggerInitFail,
+    #[error("Fail to read Cargo.toml")]
+    CargoTomlError,
+    #[error("Graceful shutdown error: {0}")]
+    GracefulShutdownError(String)
 }

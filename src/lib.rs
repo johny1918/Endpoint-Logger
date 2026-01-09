@@ -1,8 +1,15 @@
 use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
+use tokio::signal;
 use axum::{Router, http::StatusCode, response::IntoResponse, routing::get};
+use tracing::info;
+
+mod utils;
+
+use crate::utils::errors::AppError;
 
 pub async fn health_check() -> impl IntoResponse {
+    info!("Health check handle alive");
     StatusCode::OK
 }
 
@@ -20,5 +27,16 @@ pub async fn run(listener: TcpListener) -> anyhow::Result<JoinHandle<()>> {
     });
     
     Ok(handle)
-    
+}
+
+pub async fn graceful_shutdown() -> Result<(), AppError> {
+    match signal::ctrl_c().await {
+        Ok(()) => {
+            info!("Graceful shutdown");
+            Ok(())
+        },
+        Err(e) => {
+            Err(AppError::GracefulShutdownError(e.to_string()))
+        },
+    }
 }
