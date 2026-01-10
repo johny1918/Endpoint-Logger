@@ -5,6 +5,7 @@ use axum::{Router, http::StatusCode, response::IntoResponse, routing::get};
 use tracing::info;
 
 mod utils;
+mod proxy;
 
 use crate::utils::errors::AppError;
 
