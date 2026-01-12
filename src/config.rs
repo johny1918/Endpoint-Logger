@@ -403,8 +403,9 @@ mod tests {
 
     #[test]
     fn test_from_env_with_valid_env() {
-        // Set environment variables
+        // Clean and set environment variables
         unsafe {
+            std::env::remove_var("DATABASE_PATH");
             std::env::set_var("TARGET_URL", "http://localhost:8080");
             std::env::set_var("PORT", "5000");
             std::env::set_var("DATABASE_PATH", "./custom.db");
