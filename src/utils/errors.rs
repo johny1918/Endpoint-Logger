@@ -1,4 +1,7 @@
 use thiserror::Error;
+use axum::response::IntoResponse;
+use axum::response::Response;
+use reqwest::StatusCode;
 
 // Error types for future use in the application
 #[allow(dead_code)]
@@ -27,5 +30,27 @@ pub enum AppError {
     #[error("Fail to read Cargo.toml")]
     CargoTomlError,
     #[error("Graceful shutdown error: {0}")]
-    GracefulShutdownError(String)
+    GracefulShutdownError(String),
+    #[error("Bad request")]
+    BadRequest,
+    #[error("Proxy error: {0}")]
+    ProxyError(String),
+    #[error("Bad gateway: {0}")]
+    BadGateway(String),
+    #[error("Gateway timeout")]
+    GatewayTimeout,
+}
+
+/// Convert AppError to HTTP response
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        let (status, message) = match self {
+            AppError::BadGateway(msg) => (StatusCode::BAD_GATEWAY, msg),
+            AppError::GatewayTimeout => (StatusCode::GATEWAY_TIMEOUT, "Gateway timeout".to_string()),
+            AppError::ProxyError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+        };
+
+        (status, message).into_response()
+    }
 }

@@ -28,7 +28,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Bind to proxy server port
     let listener = TcpListener::bind(format!("0.0.0.0:{}", config.proxy_port)).await.expect("Failed to bind address");
-    let handle = run(listener).await?;
+    let handle = run(listener, config.target_url).await?;
     handle.await?;
     graceful_shutdown().await?;
     Ok(())

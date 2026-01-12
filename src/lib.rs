@@ -1,22 +1,25 @@
 use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
 use tokio::signal;
-use axum::{Router, http::StatusCode, response::IntoResponse, routing::get};
 use tracing::info;
+use crate::routes::proxy::proxy_router;
+use crate::proxy::ProxyState;
 
 mod utils;
+mod proxy;
+mod routes;
 
 use crate::utils::errors::AppError;
 
-pub async fn health_check() -> impl IntoResponse {
-    info!("Health check handle alive");
-    StatusCode::OK
-}
+/// Run the HTTP proxy server
+/// Takes the target_url from config and starts the server
+pub async fn run(listener: TcpListener, target_url: String) -> anyhow::Result<JoinHandle<()>> {
 
-pub async fn run(listener: TcpListener) -> anyhow::Result<JoinHandle<()>> {
+    // Create shared state with HTTP client and target URL
+    let state = ProxyState::new(target_url);
 
-    let app = Router::new()
-        .route("/health_check", get(health_check));
+    // Create router with state
+    let app = proxy_router(state);
 
     let handle = tokio::spawn(async move {
         println!("Server running on http://{:?}", listener.local_addr().unwrap());
@@ -25,7 +28,7 @@ pub async fn run(listener: TcpListener) -> anyhow::Result<JoinHandle<()>> {
             println!("Failed to start server because of {}", e)
         }
     });
-    
+
     Ok(handle)
 }
 
