@@ -15,7 +15,7 @@ pub async fn forward_request(
 ) -> Result<(StatusCode, HeaderMap, Body), AppError> {
 
     // Convert axum body to bytes
-    let body_bytes = axum::body::to_bytes(body, usize::MAX)
+    let body_bytes = axum::body::to_bytes(body, 100_000)
         .await
         .map_err(|e| AppError::ProxyError(format!("Failed to read request body: {}", e)))?;
 

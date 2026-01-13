@@ -39,6 +39,8 @@ pub enum AppError {
     BadGateway(String),
     #[error("Gateway timeout")]
     GatewayTimeout,
+    #[error("Failed to create HTTP client")]
+    ProxyStateError,
 }
 
 /// Convert AppError to HTTP response
