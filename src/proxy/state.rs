@@ -1,6 +1,8 @@
 use reqwest::Client;
 use std::time::Duration;
 
+use crate::utils::errors::AppError;
+
 /// Shared application state for the proxy
 /// Contains the HTTP client (with connection pooling) and target URL
 #[derive(Clone)]
@@ -19,7 +21,7 @@ impl ProxyState {
             .timeout(Duration::from_secs(30))
             .pool_max_idle_per_host(10) // Connection pooling
             .build()
-            .expect("Failed to create HTTP client");
+            .map_err(|_| AppError::ProxyStateError).unwrap_or_default();
 
         Self {
             client,
