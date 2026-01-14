@@ -68,7 +68,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Author
 
-Ioan A. - Building tools for developers
+Ioan A. - Building tools for developers!
 
 ---
 
