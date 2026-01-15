@@ -34,6 +34,7 @@ tracing-subscriber = { version = "0.3", features = ["fmt", "json"] }
 url = "2.5.8"
 reqwest = { version = "0.13.1", features = ["json"] }
 uuid = { version = "1.19.0", features = ["v4", "serde"] }
+chrono = { version = "0.4.43", features = ["now", "serde"] }
 
 [dev-dependencies]
 serde_json = "1.0"
