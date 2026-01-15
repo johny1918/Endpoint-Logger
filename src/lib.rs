@@ -8,6 +8,7 @@ use crate::proxy::ProxyState;
 mod utils;
 mod proxy;
 mod routes;
+mod models;
 
 use crate::utils::errors::AppError;
 

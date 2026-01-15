@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use uuid::Uuid;
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogEntry {
-    pub id: Option<i64>,
+    pub id: Option<Uuid>,
     pub request_id: String,
     pub timestamp: i64,
     pub method: String,
