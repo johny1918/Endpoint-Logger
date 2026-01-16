@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-
 use axum::body::Body;
 use axum::extract::{Request, State};
 use axum::http::HeaderMap;
@@ -11,6 +10,7 @@ use crate::proxy::forwarder::forward_request;
 use crate::proxy::ProxyState;
 use crate::utils::errors::AppError;
 use crate::models::proxy::LogEntry;
+use std::time::Instant;
 
 const MAX_BODY_SIZE: usize = 100_000; // 100KB limit for body capture
 
@@ -108,6 +108,8 @@ pub async fn intercept_request(
     // Recreate body for forwarding
     let forward_body = Body::from(body_bytes.to_vec());
 
+    // Capture time before forward
+    let request_start = Instant::now();
     // Forward the request to target application
     let result = forward_request(
         &state.client,
@@ -117,6 +119,8 @@ pub async fn intercept_request(
         forward_body,
     ).await;
 
+    // Calculate duration in milliseconds
+    let duration_ms = request_start.elapsed().as_millis() as u64;
     
 
     match result {
@@ -124,6 +128,13 @@ pub async fn intercept_request(
 
             // Convert HeaderMap to HashMap<String, String> for response headers
             let response_headers_map = headers_to_map(&response_headers);
+
+            // Capture response body for logging (read bytes, then recreate body)
+            let response_body_bytes = axum::body::to_bytes(response_body, MAX_BODY_SIZE)
+                .await
+                .unwrap_or_default();
+            let response_body_str = capture_body_string(&response_body_bytes, MAX_BODY_SIZE);
+            let response_body_for_client = Body::from(response_body_bytes.to_vec());
 
             // Create log entry for this request/response
             let log_entry = LogEntry {
@@ -134,11 +145,11 @@ pub async fn intercept_request(
                 path: path.to_string(),
                 query_string: if query.is_empty() { None } else { Some(query.to_string()) },
                 status_code: status.as_u16(),
-                duration_ms: 0, // TODO: Will calculate in EP-001-09
+                duration_ms,
                 request_headers: request_headers_map,
                 request_body: request_body_str.clone(),
                 response_headers: response_headers_map,
-                response_body: None, // TODO: Will capture in EP-001-09
+                response_body: response_body_str,
                 client_ip: client_ip.clone(),
             };
 
@@ -152,7 +163,7 @@ pub async fn intercept_request(
             );
 
             // Build response with target's status, headers, and body
-            let mut response = Response::new(response_body);
+            let mut response = Response::new(response_body_for_client);
             *response.status_mut() = status;
             *response.headers_mut() = response_headers;
 
