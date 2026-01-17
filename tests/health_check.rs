@@ -1,7 +1,8 @@
 use tokio::net::TcpListener;
 use std::net::SocketAddr;
-use axum::{Router, routing::{get, post, put, delete as axum_delete, patch, MethodRouter}, http::StatusCode, extract::Request};
+use axum::{Router, routing::{get, post, put, delete as axum_delete, patch}, http::StatusCode};
 use serde_json::json;
+use endpoint_logger::storage::SqliteStorage;
 
 // EP-001-06: Basic proxy forwarding test
 #[tokio::test]
@@ -159,7 +160,11 @@ async fn spawn_proxy(target_url: String) -> anyhow::Result<SocketAddr> {
         .await
         .expect("Failed to bind address");
     let address = listener.local_addr().expect("Failed to get port");
-    endpoint_logger::run(listener, target_url).await?;
+
+    // Use in-memory SQLite database for tests
+    let storage = SqliteStorage::new(":memory:").await.expect("Failed to create storage");
+
+    endpoint_logger::run(listener, target_url, storage).await?;
     Ok(address)
 }
 

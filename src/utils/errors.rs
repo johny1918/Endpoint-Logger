@@ -41,6 +41,8 @@ pub enum AppError {
     GatewayTimeout,
     #[error("Failed to create HTTP client")]
     ProxyStateError,
+    #[error("Database error: {0}")]
+    DatabaseError(String),
 }
 
 /// Convert AppError to HTTP response
