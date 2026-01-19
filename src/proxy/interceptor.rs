@@ -153,6 +153,20 @@ pub async fn intercept_request(
                 client_ip: client_ip.clone(),
             };
 
+            
+
+            let insert_op = state.storage.insert(&log_entry).await;
+            match insert_op {
+                Ok(row_id) => {
+                    info!("LogEntry: {:?} inserted with success into database at: {} \
+                        ",row_id, log_entry.timestamp.clone() )
+                },
+                Err(e) => {
+                    error!("{}", e)
+                }
+            }
+              
+
             // Log the structured data (for now, just log the basic info)
             info!(
                 method = %method,
