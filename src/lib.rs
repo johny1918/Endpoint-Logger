@@ -6,6 +6,7 @@ use crate::routes::proxy::proxy_router;
 use crate::proxy::ProxyState;
 use crate::storage::SqliteStorage;
 
+mod api;
 mod utils;
 mod proxy;
 mod routes;
