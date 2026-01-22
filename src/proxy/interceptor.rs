@@ -3,7 +3,7 @@ use axum::body::Body;
 use axum::extract::{Request, State};
 use axum::http::HeaderMap;
 use axum::response::Response;
-use tracing::{info, error};
+use tracing::{info, error, warn};
 use uuid::Uuid;
 use chrono::Utc;
 use crate::proxy::forwarder::forward_request;
@@ -155,6 +155,7 @@ pub async fn intercept_request(
 
             
 
+            // Insert log entry into database
             let insert_op = state.storage.insert(&log_entry).await;
             match insert_op {
                 Ok(row_id) => {
@@ -163,6 +164,18 @@ pub async fn intercept_request(
                 },
                 Err(e) => {
                     error!("{}", e)
+                }
+            }
+
+            // Broadcast log entry to all connected WebSocket clients
+            match state.broadcaster.broadcast(&log_entry) {
+                Ok(count) => {
+                    if count > 0 {
+                        info!(clients = count, "Broadcasted log entry to WebSocket clients");
+                    }
+                },
+                Err(e) => {
+                    warn!(error = %e, "Failed to broadcast log entry");
                 }
             }
               

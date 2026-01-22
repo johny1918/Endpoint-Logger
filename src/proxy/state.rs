@@ -1,11 +1,12 @@
 use reqwest::Client;
 use std::time::Duration;
 
+use crate::api::broadcaster::Broadcaster;
 use crate::storage::SqliteStorage;
 use crate::utils::errors::AppError;
 
 /// Shared application state for the proxy
-/// Contains the HTTP client (with connection pooling), target URL, and storage
+/// Contains the HTTP client (with connection pooling), target URL, storage, and broadcaster
 #[derive(Clone)]
 pub struct ProxyState {
     /// Reusable HTTP client with connection pooling and 30s timeout
@@ -14,6 +15,8 @@ pub struct ProxyState {
     pub target_url: String,
     /// SQLite storage for log entries
     pub storage: SqliteStorage,
+    /// Broadcast channel for real-time WebSocket updates
+    pub broadcaster: Broadcaster,
 }
 
 impl ProxyState {
@@ -26,10 +29,14 @@ impl ProxyState {
             .build()
             .map_err(|_| AppError::ProxyStateError).unwrap_or_default();
 
+        // Create broadcaster for WebSocket clients
+        let broadcaster = Broadcaster::new();
+
         Self {
             client,
             target_url,
             storage,
+            broadcaster,
         }
     }
 }
