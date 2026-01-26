@@ -33,6 +33,8 @@ pub enum AppError {
     GracefulShutdownError(String),
     #[error("Bad request")]
     BadRequest,
+    #[error("Error 404 Not found")]
+    NotFound,
     #[error("Proxy error: {0}")]
     ProxyError(String),
     #[error("Bad gateway: {0}")]
@@ -49,9 +51,11 @@ pub enum AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, message) = match self {
+            AppError::NotFound => (StatusCode::NOT_FOUND, "Not found".to_string()),
             AppError::BadGateway(msg) => (StatusCode::BAD_GATEWAY, msg),
             AppError::GatewayTimeout => (StatusCode::GATEWAY_TIMEOUT, "Gateway timeout".to_string()),
             AppError::ProxyError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            AppError::DatabaseError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
