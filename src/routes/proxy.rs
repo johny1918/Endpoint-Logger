@@ -4,6 +4,7 @@ use crate::api::websocket::ws_handler;
 use axum::Router;
 use axum::routing::get;
 use crate::api::logs::get_log_by_request_id;
+use crate::api::logs::get_recent_logs;
 
 /// Create the main application router
 /// Routes are registered in priority order:
@@ -11,6 +12,7 @@ use crate::api::logs::get_log_by_request_id;
 /// 2. fallback - Proxy all other requests to target
 pub fn proxy_router(state: ProxyState) -> Router {
     Router::new()
+        .route("/api/logs", get(get_recent_logs))
         .route("/api/logs/{request_id}", get(get_log_by_request_id))
         // WebSocket endpoint - must be registered before fallback
         .route("/ws", get(ws_handler))
