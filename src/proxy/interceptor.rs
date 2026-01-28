@@ -3,7 +3,7 @@ use axum::body::Body;
 use axum::extract::{Request, State};
 use axum::http::HeaderMap;
 use axum::response::Response;
-use tracing::{info, error, warn};
+use tracing::{info, error};
 use uuid::Uuid;
 use chrono::Utc;
 use crate::proxy::forwarder::forward_request;
@@ -153,34 +153,7 @@ pub async fn intercept_request(
                 client_ip: client_ip.clone(),
             };
 
-            
-
-            // Insert log entry into database
-            let insert_op = state.storage.insert(&log_entry).await;
-            match insert_op {
-                Ok(row_id) => {
-                    info!("LogEntry: {:?} inserted with success into database at: {} \
-                        ",row_id, log_entry.timestamp.clone() )
-                },
-                Err(e) => {
-                    error!("{}", e)
-                }
-            }
-
-            // Broadcast log entry to all connected WebSocket clients
-            match state.broadcaster.broadcast(&log_entry) {
-                Ok(count) => {
-                    if count > 0 {
-                        info!(clients = count, "Broadcasted log entry to WebSocket clients");
-                    }
-                },
-                Err(e) => {
-                    warn!(error = %e, "Failed to broadcast log entry");
-                }
-            }
-              
-
-            // Log the structured data (for now, just log the basic info)
+            // Log the structured data
             info!(
                 method = %method,
                 path = %path_and_query,
@@ -188,6 +161,10 @@ pub async fn intercept_request(
                 request_id = %log_entry.request_id,
                 "Request completed successfully"
             );
+
+            // Send log entry to async worker for database insert and broadcast
+            // This is non-blocking - response returns to client immediately
+            state.log_sender.send(log_entry);
 
             // Build response with target's status, headers, and body
             let mut response = Response::new(response_body_for_client);
