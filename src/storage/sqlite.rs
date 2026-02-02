@@ -206,6 +206,158 @@ impl SqliteStorage {
         Ok(result.rows_affected())
     }
 
+    /// Query log entries with filters and pagination
+    /// Supports filtering by time range, method, path pattern, and status codes
+    pub async fn query_filtered(
+        &self,
+        from_timestamp: Option<DateTime<Utc>>,
+        to_timestamp: Option<DateTime<Utc>>,
+        methods: Option<Vec<String>>,
+        path_pattern: Option<String>,
+        status_codes: Option<Vec<u16>>,
+        limit: u32,
+        offset: u32,
+    ) -> Result<Vec<LogEntry>, AppError> {
+        let mut sql = String::from(
+            r#"
+            SELECT id, request_id, timestamp, method, path, query_string,
+                   status_code, duration_ms, request_headers, request_body,
+                   response_headers, response_body, client_ip
+            FROM log_entries
+            WHERE 1=1
+            "#
+        );
+
+        // Build dynamic WHERE clauses
+        if from_timestamp.is_some() {
+            sql.push_str(" AND timestamp >= ?");
+        }
+        if to_timestamp.is_some() {
+            sql.push_str(" AND timestamp <= ?");
+        }
+        if let Some(ref methods) = methods {
+            if !methods.is_empty() {
+                let placeholders: Vec<&str> = methods.iter().map(|_| "?").collect();
+                sql.push_str(&format!(" AND method IN ({})", placeholders.join(",")));
+            }
+        }
+        if path_pattern.is_some() {
+            sql.push_str(" AND path LIKE ?");
+        }
+        if let Some(ref codes) = status_codes {
+            if !codes.is_empty() {
+                let placeholders: Vec<&str> = codes.iter().map(|_| "?").collect();
+                sql.push_str(&format!(" AND status_code IN ({})", placeholders.join(",")));
+            }
+        }
+
+        sql.push_str(" ORDER BY timestamp DESC LIMIT ? OFFSET ?");
+
+        // Build query with bindings
+        let mut query = sqlx::query(&sql);
+
+        // Bind parameters in order
+        if let Some(from) = from_timestamp {
+            query = query.bind(from.timestamp());
+        }
+        if let Some(to) = to_timestamp {
+            query = query.bind(to.timestamp());
+        }
+        if let Some(ref methods) = methods {
+            for method in methods {
+                query = query.bind(method);
+            }
+        }
+        if let Some(ref pattern) = path_pattern {
+            query = query.bind(format!("%{}%", pattern));
+        }
+        if let Some(ref codes) = status_codes {
+            for code in codes {
+                query = query.bind(*code as i32);
+            }
+        }
+        query = query.bind(limit).bind(offset);
+
+        let rows = query
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| AppError::DatabaseError(format!("Failed to query filtered entries: {}", e)))?;
+
+        let mut entries = Vec::with_capacity(rows.len());
+        for row in rows {
+            let entry = self.row_to_log_entry(&row)?;
+            entries.push(entry);
+        }
+
+        Ok(entries)
+    }
+
+    /// Count log entries with filters
+    pub async fn count_filtered(
+        &self,
+        from_timestamp: Option<DateTime<Utc>>,
+        to_timestamp: Option<DateTime<Utc>>,
+        methods: Option<Vec<String>>,
+        path_pattern: Option<String>,
+        status_codes: Option<Vec<u16>>,
+    ) -> Result<u64, AppError> {
+        let mut sql = String::from("SELECT COUNT(*) as count FROM log_entries WHERE 1=1");
+
+        // Build dynamic WHERE clauses
+        if from_timestamp.is_some() {
+            sql.push_str(" AND timestamp >= ?");
+        }
+        if to_timestamp.is_some() {
+            sql.push_str(" AND timestamp <= ?");
+        }
+        if let Some(ref methods) = methods {
+            if !methods.is_empty() {
+                let placeholders: Vec<&str> = methods.iter().map(|_| "?").collect();
+                sql.push_str(&format!(" AND method IN ({})", placeholders.join(",")));
+            }
+        }
+        if path_pattern.is_some() {
+            sql.push_str(" AND path LIKE ?");
+        }
+        if let Some(ref codes) = status_codes {
+            if !codes.is_empty() {
+                let placeholders: Vec<&str> = codes.iter().map(|_| "?").collect();
+                sql.push_str(&format!(" AND status_code IN ({})", placeholders.join(",")));
+            }
+        }
+
+        // Build query with bindings
+        let mut query = sqlx::query(&sql);
+
+        if let Some(from) = from_timestamp {
+            query = query.bind(from.timestamp());
+        }
+        if let Some(to) = to_timestamp {
+            query = query.bind(to.timestamp());
+        }
+        if let Some(ref methods) = methods {
+            for method in methods {
+                query = query.bind(method);
+            }
+        }
+        if let Some(ref pattern) = path_pattern {
+            query = query.bind(format!("%{}%", pattern));
+        }
+        if let Some(ref codes) = status_codes {
+            for code in codes {
+                query = query.bind(*code as i32);
+            }
+        }
+
+        let row = query
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| AppError::DatabaseError(format!("Failed to count filtered entries: {}", e)))?;
+
+        let count: i64 = row.get("count");
+        Ok(count as u64)
+    }
+
     /// Convert a database row to a LogEntry
     fn row_to_log_entry(&self, row: &sqlx::sqlite::SqliteRow) -> Result<LogEntry, AppError> {
         let id: i64 = row.get("id");
@@ -437,5 +589,292 @@ mod tests {
         let future = Utc::now() + chrono::Duration::hours(1);
         let deleted = storage.delete_older_than(future).await.unwrap();
         assert!(deleted >= 1);
+    }
+
+    fn create_test_entry_with_data(method: &str, path: &str, status_code: u16) -> LogEntry {
+        LogEntry {
+            id: Some(Uuid::new_v4()),
+            request_id: Uuid::new_v4(),
+            timestamp: Utc::now(),
+            method: method.to_string(),
+            path: path.to_string(),
+            query_string: None,
+            status_code,
+            duration_ms: 50,
+            request_headers: HashMap::new(),
+            request_body: None,
+            response_headers: HashMap::new(),
+            response_body: None,
+            client_ip: "127.0.0.1".to_string(),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_query_filtered_no_filters() {
+        let storage = create_test_storage().await;
+
+        // Insert entries
+        storage.insert(&create_test_entry_with_data("GET", "/api/users", 200)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("POST", "/api/users", 201)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("GET", "/api/posts", 200)).await.unwrap();
+
+        // Query with no filters
+        let entries = storage.query_filtered(None, None, None, None, None, 10, 0).await.unwrap();
+        assert_eq!(entries.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_query_filtered_by_method() {
+        let storage = create_test_storage().await;
+
+        storage.insert(&create_test_entry_with_data("GET", "/api/users", 200)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("POST", "/api/users", 201)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("GET", "/api/posts", 200)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("DELETE", "/api/users/1", 204)).await.unwrap();
+
+        // Filter by GET only
+        let entries = storage.query_filtered(
+            None, None,
+            Some(vec!["GET".to_string()]),
+            None, None, 10, 0
+        ).await.unwrap();
+        assert_eq!(entries.len(), 2);
+        assert!(entries.iter().all(|e| e.method == "GET"));
+
+        // Filter by multiple methods
+        let entries = storage.query_filtered(
+            None, None,
+            Some(vec!["GET".to_string(), "POST".to_string()]),
+            None, None, 10, 0
+        ).await.unwrap();
+        assert_eq!(entries.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_query_filtered_by_path_pattern() {
+        let storage = create_test_storage().await;
+
+        storage.insert(&create_test_entry_with_data("GET", "/api/users", 200)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("GET", "/api/users/1", 200)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("GET", "/api/posts", 200)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("GET", "/health", 200)).await.unwrap();
+
+        // Filter by path pattern
+        let entries = storage.query_filtered(
+            None, None, None,
+            Some("users".to_string()),
+            None, 10, 0
+        ).await.unwrap();
+        assert_eq!(entries.len(), 2);
+        assert!(entries.iter().all(|e| e.path.contains("users")));
+
+        // Filter by api pattern
+        let entries = storage.query_filtered(
+            None, None, None,
+            Some("api".to_string()),
+            None, 10, 0
+        ).await.unwrap();
+        assert_eq!(entries.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_query_filtered_by_status_code() {
+        let storage = create_test_storage().await;
+
+        storage.insert(&create_test_entry_with_data("GET", "/api/users", 200)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("POST", "/api/users", 201)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("GET", "/api/error", 500)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("GET", "/api/notfound", 404)).await.unwrap();
+
+        // Filter by single status code
+        let entries = storage.query_filtered(
+            None, None, None, None,
+            Some(vec![200]),
+            10, 0
+        ).await.unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].status_code, 200);
+
+        // Filter by multiple status codes (success codes)
+        let entries = storage.query_filtered(
+            None, None, None, None,
+            Some(vec![200, 201]),
+            10, 0
+        ).await.unwrap();
+        assert_eq!(entries.len(), 2);
+
+        // Filter by error codes
+        let entries = storage.query_filtered(
+            None, None, None, None,
+            Some(vec![404, 500]),
+            10, 0
+        ).await.unwrap();
+        assert_eq!(entries.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_query_filtered_pagination() {
+        let storage = create_test_storage().await;
+
+        // Insert 5 entries
+        for i in 0..5 {
+            let mut entry = create_test_entry_with_data("GET", &format!("/api/item/{}", i), 200);
+            entry.path = format!("/api/item/{}", i);
+            storage.insert(&entry).await.unwrap();
+        }
+
+        // First page (limit 2, offset 0)
+        let entries = storage.query_filtered(None, None, None, None, None, 2, 0).await.unwrap();
+        assert_eq!(entries.len(), 2);
+
+        // Second page (limit 2, offset 2)
+        let entries = storage.query_filtered(None, None, None, None, None, 2, 2).await.unwrap();
+        assert_eq!(entries.len(), 2);
+
+        // Third page (limit 2, offset 4) - only 1 remaining
+        let entries = storage.query_filtered(None, None, None, None, None, 2, 4).await.unwrap();
+        assert_eq!(entries.len(), 1);
+
+        // Beyond data (offset 10)
+        let entries = storage.query_filtered(None, None, None, None, None, 2, 10).await.unwrap();
+        assert_eq!(entries.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_query_filtered_combined_filters() {
+        let storage = create_test_storage().await;
+
+        storage.insert(&create_test_entry_with_data("GET", "/api/users", 200)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("POST", "/api/users", 201)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("GET", "/api/users/1", 200)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("GET", "/api/posts", 200)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("GET", "/api/users/2", 404)).await.unwrap();
+
+        // Combine method and path filters
+        let entries = storage.query_filtered(
+            None, None,
+            Some(vec!["GET".to_string()]),
+            Some("users".to_string()),
+            None, 10, 0
+        ).await.unwrap();
+        assert_eq!(entries.len(), 3);
+
+        // Combine method, path, and status code filters
+        let entries = storage.query_filtered(
+            None, None,
+            Some(vec!["GET".to_string()]),
+            Some("users".to_string()),
+            Some(vec![200]),
+            10, 0
+        ).await.unwrap();
+        assert_eq!(entries.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_query_filtered_time_range() {
+        let storage = create_test_storage().await;
+
+        let now = Utc::now();
+        let past = now - chrono::Duration::hours(2);
+        let future = now + chrono::Duration::hours(2);
+
+        // Insert entries
+        storage.insert(&create_test_entry_with_data("GET", "/api/test", 200)).await.unwrap();
+
+        // Query with from_timestamp in past (should include)
+        let entries = storage.query_filtered(
+            Some(past), None, None, None, None, 10, 0
+        ).await.unwrap();
+        assert_eq!(entries.len(), 1);
+
+        // Query with from_timestamp in future (should exclude)
+        let entries = storage.query_filtered(
+            Some(future), None, None, None, None, 10, 0
+        ).await.unwrap();
+        assert_eq!(entries.len(), 0);
+
+        // Query with to_timestamp in future (should include)
+        let entries = storage.query_filtered(
+            None, Some(future), None, None, None, 10, 0
+        ).await.unwrap();
+        assert_eq!(entries.len(), 1);
+
+        // Query with to_timestamp in past (should exclude)
+        let entries = storage.query_filtered(
+            None, Some(past), None, None, None, 10, 0
+        ).await.unwrap();
+        assert_eq!(entries.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_count_filtered_no_filters() {
+        let storage = create_test_storage().await;
+
+        storage.insert(&create_test_entry_with_data("GET", "/api/users", 200)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("POST", "/api/users", 201)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("GET", "/api/posts", 200)).await.unwrap();
+
+        let count = storage.count_filtered(None, None, None, None, None).await.unwrap();
+        assert_eq!(count, 3);
+    }
+
+    #[tokio::test]
+    async fn test_count_filtered_by_method() {
+        let storage = create_test_storage().await;
+
+        storage.insert(&create_test_entry_with_data("GET", "/api/users", 200)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("POST", "/api/users", 201)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("GET", "/api/posts", 200)).await.unwrap();
+
+        let count = storage.count_filtered(
+            None, None,
+            Some(vec!["GET".to_string()]),
+            None, None
+        ).await.unwrap();
+        assert_eq!(count, 2);
+    }
+
+    #[tokio::test]
+    async fn test_count_filtered_combined() {
+        let storage = create_test_storage().await;
+
+        storage.insert(&create_test_entry_with_data("GET", "/api/users", 200)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("POST", "/api/users", 201)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("GET", "/api/users/1", 200)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("GET", "/api/posts", 200)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("GET", "/api/users/2", 404)).await.unwrap();
+
+        // Count GET requests to /users paths with 200 status
+        let count = storage.count_filtered(
+            None, None,
+            Some(vec!["GET".to_string()]),
+            Some("users".to_string()),
+            Some(vec![200])
+        ).await.unwrap();
+        assert_eq!(count, 2);
+    }
+
+    #[tokio::test]
+    async fn test_query_filtered_empty_vectors() {
+        let storage = create_test_storage().await;
+
+        storage.insert(&create_test_entry_with_data("GET", "/api/users", 200)).await.unwrap();
+        storage.insert(&create_test_entry_with_data("POST", "/api/users", 201)).await.unwrap();
+
+        // Empty methods vector should not filter (return all)
+        let entries = storage.query_filtered(
+            None, None,
+            Some(vec![]),
+            None, None, 10, 0
+        ).await.unwrap();
+        assert_eq!(entries.len(), 2);
+
+        // Empty status_codes vector should not filter (return all)
+        let entries = storage.query_filtered(
+            None, None, None, None,
+            Some(vec![]),
+            10, 0
+        ).await.unwrap();
+        assert_eq!(entries.len(), 2);
     }
 }
