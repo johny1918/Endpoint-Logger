@@ -5,7 +5,7 @@ import { useApi } from '../composables/useApi'
 import LogStream from '../components/LogStream.vue'
 import LogDetail from '../components/LogDetail.vue'
 
-const { logs, connected } = useWebSocket()
+const { logs, connected, clearLogs } = useWebSocket()
 const { fetchRecentLogs, loading } = useApi()
 
 const selectedLog = ref(null)
@@ -28,6 +28,10 @@ const closeDetail = () => {
   showDetail.value = false
   selectedLog.value = null
 }
+
+const handleClear = () => {
+  clearLogs()
+}
 </script>
 
 <template>
@@ -35,7 +39,10 @@ const closeDetail = () => {
     <LogStream
       :logs="logs"
       :loading="loading"
+      :show-clear="true"
+      title="Live Requests"
       @select="selectLog"
+      @clear="handleClear"
     />
 
     <LogDetail

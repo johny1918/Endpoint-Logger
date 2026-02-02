@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 
 const props = defineProps({
   logs: {
@@ -9,10 +9,42 @@ const props = defineProps({
   loading: {
     type: Boolean,
     default: false
+  },
+  title: {
+    type: String,
+    default: 'Live Requests'
+  },
+  showClear: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['select'])
+const emit = defineEmits(['select', 'clear'])
+
+const autoScroll = ref(true)
+const listRef = ref(null)
+const newEntryIds = ref(new Set())
+
+// Auto-scroll to top when new logs arrive
+watch(() => props.logs.length, async (newLen, oldLen) => {
+  if (newLen > oldLen && autoScroll.value && listRef.value) {
+    // Mark new entries for animation
+    const newCount = newLen - oldLen
+    for (let i = 0; i < newCount; i++) {
+      if (props.logs[i]) {
+        newEntryIds.value.add(props.logs[i].request_id)
+      }
+    }
+    // Remove animation class after animation completes
+    setTimeout(() => {
+      newEntryIds.value.clear()
+    }, 500)
+
+    await nextTick()
+    listRef.value.scrollTop = 0
+  }
+})
 
 function formatTime(timestamp) {
   const date = new Date(timestamp)
@@ -45,16 +77,53 @@ function formatPath(log) {
   }
   return path
 }
+
+function isNewEntry(requestId) {
+  return newEntryIds.value.has(requestId)
+}
+
+function handleClear() {
+  emit('clear')
+}
+
+function toggleAutoScroll() {
+  autoScroll.value = !autoScroll.value
+}
 </script>
 
 <template>
   <div class="log-stream">
     <div class="stream-header">
-      <h2>Live Requests</h2>
-      <span class="log-count">{{ logs.length }} logs</span>
+      <div class="header-left">
+        <h2>{{ title }}</h2>
+        <span class="log-count">{{ logs.length }} logs</span>
+      </div>
+      <div class="header-actions">
+        <button
+          v-if="showClear && logs.length > 0"
+          class="action-btn"
+          @click="handleClear"
+          title="Clear logs"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+        <button
+          class="action-btn"
+          :class="{ active: autoScroll }"
+          @click="toggleAutoScroll"
+          :title="autoScroll ? 'Auto-scroll enabled' : 'Auto-scroll disabled'"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 19V5M5 12l7-7 7 7"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
-    <div class="stream-body">
+    <div class="stream-body" ref="listRef">
       <div v-if="loading && logs.length === 0" class="loading">
         Loading logs...
       </div>
@@ -74,6 +143,7 @@ function formatPath(log) {
           v-for="log in logs"
           :key="log.request_id"
           class="log-entry"
+          :class="{ 'new-entry': isNewEntry(log.request_id) }"
           @click="emit('select', log)"
         >
           <span class="time mono">{{ formatTime(log.timestamp) }}</span>
@@ -105,6 +175,12 @@ function formatPath(log) {
   border-bottom: 1px solid var(--border);
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .stream-header h2 {
   font-size: 1rem;
   font-weight: 600;
@@ -116,6 +192,35 @@ function formatPath(log) {
   background: var(--bg-tertiary);
   padding: 4px 10px;
   border-radius: 12px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.action-btn:hover {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.action-btn.active {
+  background: var(--accent);
+  color: white;
 }
 
 .stream-body {
@@ -166,6 +271,19 @@ function formatPath(log) {
   background: var(--bg-tertiary);
 }
 
+.log-entry.new-entry {
+  animation: highlight 0.5s ease-out;
+}
+
+@keyframes highlight {
+  0% {
+    background: var(--accent-muted, rgba(59, 130, 246, 0.2));
+  }
+  100% {
+    background: transparent;
+  }
+}
+
 .time {
   color: var(--text-muted);
   flex-shrink: 0;
@@ -189,6 +307,12 @@ function formatPath(log) {
   min-width: 0;
 }
 
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .status {
   width: 40px;
   text-align: center;
@@ -206,5 +330,9 @@ function formatPath(log) {
   text-align: right;
   color: var(--text-muted);
   flex-shrink: 0;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 </style>

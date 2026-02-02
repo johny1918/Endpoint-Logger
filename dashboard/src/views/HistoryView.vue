@@ -41,6 +41,7 @@ const refresh = async () => {
     <LogStream
       :logs="logs"
       :loading="loading"
+      title="Request History"
       @select="selectLog"
     />
 
