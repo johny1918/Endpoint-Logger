@@ -1,3 +1,26 @@
+# Rust
 /target
+
+# Environment
 .env
+
+# Documentation
 Thoughts.md
+
+# Node.js / Vue.js
+node_modules/
+dashboard/node_modules/
+dashboard/dist/
+*.log
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Database (optional - remove if you want to track it)
+*.db
+*.db-journal
+*.db-wal
