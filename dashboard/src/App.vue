@@ -1,35 +1,9 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
+import { RouterLink, RouterView } from 'vue-router'
 import { useWebSocket } from './composables/useWebSocket'
-import { useApi } from './composables/useApi'
-import LogStream from './components/LogStream.vue'
-import LogDetail from './components/LogDetail.vue'
 
-const { logs, connected, connectionStatus } = useWebSocket()
-const { fetchRecentLogs, loading } = useApi()
-
-const selectedLog = ref(null)
-const showDetail = ref(false)
-
-// Load historical logs on mount
-fetchRecentLogs(50).then(historicalLogs => {
-  // Merge with existing logs, avoiding duplicates
-  const existingIds = new Set(logs.value.map(l => l.request_id))
-  const newLogs = historicalLogs.filter(l => !existingIds.has(l.request_id))
-  logs.value.push(...newLogs)
-  // Sort by timestamp descending
-  logs.value.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-})
-
-const selectLog = (log) => {
-  selectedLog.value = log
-  showDetail.value = true
-}
-
-const closeDetail = () => {
-  showDetail.value = false
-  selectedLog.value = null
-}
+const { connected, connectionStatus } = useWebSocket()
 
 const statusColor = computed(() => {
   if (connected.value) return 'var(--success)'
@@ -41,6 +15,10 @@ const statusColor = computed(() => {
   <header class="header">
     <div class="header-left">
       <h1>Endpoint <span class="accent">Logger</span></h1>
+      <nav class="nav">
+        <RouterLink to="/" class="nav-link">Live</RouterLink>
+        <RouterLink to="/history" class="nav-link">History</RouterLink>
+      </nav>
     </div>
     <div class="header-right">
       <div class="connection-status">
@@ -51,18 +29,8 @@ const statusColor = computed(() => {
   </header>
 
   <main class="main">
-    <LogStream
-      :logs="logs"
-      :loading="loading"
-      @select="selectLog"
-    />
+    <RouterView />
   </main>
-
-  <LogDetail
-    v-if="showDetail"
-    :log="selectedLog"
-    @close="closeDetail"
-  />
 </template>
 
 <style scoped>
@@ -75,6 +43,12 @@ const statusColor = computed(() => {
   border-bottom: 1px solid var(--border);
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
 .header h1 {
   font-size: 1.5rem;
   font-weight: 600;
@@ -82,6 +56,30 @@ const statusColor = computed(() => {
 
 .header .accent {
   color: var(--accent);
+}
+
+.nav {
+  display: flex;
+  gap: 8px;
+}
+
+.nav-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  transition: all 0.15s;
+}
+
+.nav-link:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.nav-link.router-link-active {
+  background: var(--accent);
+  color: white;
 }
 
 .header-right {
