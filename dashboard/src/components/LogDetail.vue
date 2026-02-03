@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
   log: {
@@ -12,6 +12,23 @@ const emit = defineEmits(['close'])
 
 const activeTab = ref('request')
 const copySuccess = ref(null)
+
+/**
+ * Close modal on Escape key
+ */
+function handleKeydown(e) {
+  if (e.key === 'Escape') {
+    emit('close')
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', handleKeydown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+})
 
 function formatTimestamp(timestamp) {
   return new Date(timestamp).toLocaleString()
@@ -62,12 +79,6 @@ async function copyToClipboard(text, type) {
 
 function handleBackdropClick(e) {
   if (e.target === e.currentTarget) {
-    emit('close')
-  }
-}
-
-function handleKeydown(e) {
-  if (e.key === 'Escape') {
     emit('close')
   }
 }
@@ -224,6 +235,8 @@ function handleKeydown(e) {
   justify-content: center;
   padding: 24px;
   z-index: 100;
+  animation: fadeIn var(--transition-fast);
+  backdrop-filter: blur(2px);
 }
 
 .modal {
@@ -235,6 +248,9 @@ function handleKeydown(e) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: 0 20px 60px var(--shadow-lg);
+  animation: slideInUp var(--transition-base);
+  border: 1px solid var(--border);
 }
 
 .modal-header {
@@ -243,6 +259,7 @@ function handleKeydown(e) {
   align-items: center;
   padding: 20px 24px;
   border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
 }
 
 .header-info {
@@ -254,45 +271,53 @@ function handleKeydown(e) {
 .method {
   font-weight: 700;
   font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.method-get { color: var(--success); }
-.method-post { color: var(--accent); }
-.method-put { color: var(--warning); }
-.method-patch { color: #a855f7; }
-.method-delete { color: var(--error); }
+.method-get { color: var(--method-get); }
+.method-post { color: var(--method-post); }
+.method-put { color: var(--method-put); }
+.method-patch { color: var(--method-patch); }
+.method-delete { color: var(--method-delete); }
 
 .path {
   font-size: 0.875rem;
   color: var(--text-primary);
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  word-break: break-all;
 }
 
 .status {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.875rem;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
   background: var(--bg-tertiary);
 }
 
-.status-success { color: var(--success); }
-.status-redirect { color: var(--accent); }
-.status-client-error { color: var(--warning); }
-.status-server-error { color: var(--error); }
+.status-success { color: var(--status-2xx); }
+.status-redirect { color: var(--status-3xx); }
+.status-client-error { color: var(--status-4xx); }
+.status-server-error { color: var(--status-5xx); }
 
 .close-btn {
   background: none;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  padding: 6px 10px;
+  border-radius: 6px;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
 }
 
 .close-btn:hover {
   background: var(--bg-tertiary);
   color: var(--text-primary);
+  transform: scale(1.1);
 }
 
 .modal-meta {
@@ -308,6 +333,7 @@ function handleKeydown(e) {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  animation: slideInUp var(--transition-base);
 }
 
 .meta-label {
@@ -315,6 +341,7 @@ function handleKeydown(e) {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  font-weight: 600;
 }
 
 .meta-value {
@@ -326,6 +353,8 @@ function handleKeydown(e) {
   display: flex;
   padding: 0 24px;
   border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+  gap: 8px;
 }
 
 .tab {
@@ -338,15 +367,19 @@ function handleKeydown(e) {
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
+  transition: all var(--transition-fast);
 }
 
 .tab:hover {
   color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border-radius: 6px 6px 0 0;
 }
 
 .tab.active {
   color: var(--accent);
   border-bottom-color: var(--accent);
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 .modal-body {
@@ -359,6 +392,7 @@ function handleKeydown(e) {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  animation: fadeIn var(--transition-fast);
 }
 
 .section {
@@ -377,42 +411,65 @@ function handleKeydown(e) {
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .copy-btn {
   background: var(--bg-tertiary);
-  border: none;
+  border: 1px solid var(--border);
   color: var(--text-muted);
   font-size: 0.75rem;
-  padding: 4px 10px;
-  border-radius: 4px;
+  padding: 6px 12px;
+  border-radius: 6px;
   cursor: pointer;
+  font-weight: 500;
+  transition: all var(--transition-fast);
 }
 
 .copy-btn:hover {
   color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--border-light);
+  transform: translateY(-1px);
+}
+
+.copy-btn:active {
+  transform: translateY(0);
 }
 
 .headers {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  background: var(--bg-primary);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
 }
 
 .header-row {
   display: flex;
   gap: 12px;
   font-size: 0.8125rem;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.header-row:last-child {
+  border-bottom: none;
 }
 
 .header-key {
   color: var(--accent);
   flex-shrink: 0;
+  font-weight: 600;
 }
 
 .header-value {
   color: var(--text-primary);
   word-break: break-all;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
 }
 
 .code-block {
@@ -424,15 +481,49 @@ function handleKeydown(e) {
   color: var(--text-primary);
   white-space: pre-wrap;
   word-break: break-all;
+  border: 1px solid var(--border);
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  line-height: 1.6;
 }
 
 .code-block.json {
-  color: var(--success);
+  color: var(--status-2xx);
 }
 
 .empty-section {
   color: var(--text-muted);
   font-size: 0.875rem;
   font-style: italic;
+  padding: 12px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .modal {
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+
+  .modal-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .modal-meta {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .tabs {
+    overflow-x: auto;
+  }
+
+  .tab {
+    padding: 10px 12px;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
 }
 </style>

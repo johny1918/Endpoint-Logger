@@ -165,6 +165,9 @@ function toggleAutoScroll() {
   background: var(--bg-secondary);
   border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 2px 8px var(--shadow);
+  border: 1px solid var(--border);
+  animation: slideInUp var(--transition-base);
 }
 
 .stream-header {
@@ -173,6 +176,7 @@ function toggleAutoScroll() {
   align-items: center;
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
 }
 
 .header-left {
@@ -184,6 +188,7 @@ function toggleAutoScroll() {
 .stream-header h2 {
   font-size: 1rem;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .log-count {
@@ -192,6 +197,7 @@ function toggleAutoScroll() {
   background: var(--bg-tertiary);
   padding: 4px 10px;
   border-radius: 12px;
+  font-weight: 500;
 }
 
 .header-actions {
@@ -205,27 +211,37 @@ function toggleAutoScroll() {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border: none;
+  border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg-tertiary);
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition-fast);
+  font-size: 0;
 }
 
 .action-btn:hover {
-  background: var(--bg-primary);
+  background: var(--bg-hover);
   color: var(--text-primary);
+  border-color: var(--border-light);
+  transform: translateY(-1px);
+}
+
+.action-btn:active {
+  transform: translateY(0);
 }
 
 .action-btn.active {
   background: var(--accent);
   color: white;
+  border-color: var(--accent-dark);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .stream-body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .loading,
@@ -236,15 +252,18 @@ function toggleAutoScroll() {
   justify-content: center;
   padding: 60px 20px;
   color: var(--text-muted);
+  animation: fadeIn var(--transition-base);
 }
 
 .empty-icon {
   margin-bottom: 16px;
   opacity: 0.5;
+  animation: bounce var(--transition-slow);
 }
 
 .empty p {
   margin-bottom: 8px;
+  font-size: 0.95rem;
 }
 
 .empty-hint {
@@ -263,48 +282,63 @@ function toggleAutoScroll() {
   padding: 10px 12px;
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all var(--transition-fast);
   font-size: 0.875rem;
+  line-height: 1.4;
 }
 
 .log-entry:hover {
   background: var(--bg-tertiary);
+  transform: translateX(2px);
+  box-shadow: 0 2px 6px var(--shadow);
+}
+
+.log-entry:active {
+  transform: translateX(0);
 }
 
 .log-entry.new-entry {
-  animation: highlight 0.5s ease-out;
+  animation: slideInDown var(--transition-fast), highlight 0.6s ease-out;
 }
 
 @keyframes highlight {
   0% {
-    background: var(--accent-muted, rgba(59, 130, 246, 0.2));
+    background: rgba(59, 130, 246, 0.15);
+    box-shadow: inset 0 0 8px rgba(59, 130, 246, 0.2);
   }
   100% {
     background: transparent;
+    box-shadow: none;
   }
 }
 
 .time {
   color: var(--text-muted);
   flex-shrink: 0;
+  font-size: 0.8125rem;
 }
 
 .method {
   width: 60px;
   flex-shrink: 0;
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.method-get { color: var(--success); }
-.method-post { color: var(--accent); }
-.method-put { color: var(--warning); }
-.method-patch { color: #a855f7; }
-.method-delete { color: var(--error); }
+.method-get { color: var(--method-get); }
+.method-post { color: var(--method-post); }
+.method-put { color: var(--method-put); }
+.method-patch { color: var(--method-patch); }
+.method-delete { color: var(--method-delete); }
+.method-head { color: var(--method-head); }
+.method-options { color: var(--method-options); }
 
 .path {
   flex: 1;
   color: var(--text-primary);
   min-width: 0;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
 }
 
 .truncate {
@@ -317,22 +351,70 @@ function toggleAutoScroll() {
   width: 40px;
   text-align: center;
   flex-shrink: 0;
-  font-weight: 600;
+  font-weight: 700;
 }
 
-.status-success { color: var(--success); }
-.status-redirect { color: var(--accent); }
-.status-client-error { color: var(--warning); }
-.status-server-error { color: var(--error); }
+.status-success { color: var(--status-2xx); }
+.status-redirect { color: var(--status-3xx); }
+.status-client-error { color: var(--status-4xx); }
+.status-server-error { color: var(--status-5xx); }
 
 .duration {
   width: 60px;
   text-align: right;
   color: var(--text-muted);
   flex-shrink: 0;
+  font-size: 0.8125rem;
 }
 
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .time {
+    width: 50px;
+  }
+
+  .method {
+    width: 50px;
+    font-size: 0.75rem;
+  }
+
+  .status {
+    width: 35px;
+  }
+
+  .duration {
+    width: 50px;
+  }
+}
+
+@media (max-width: 768px) {
+  .log-entry {
+    gap: 8px;
+    padding: 8px 10px;
+    font-size: 0.8125rem;
+  }
+
+  .stream-header {
+    padding: 12px 16px;
+  }
+
+  .time {
+    width: 40px;
+    font-size: 0.75rem;
+  }
+
+  .method {
+    width: 45px;
+    font-size: 0.7rem;
+  }
+
+  .duration {
+    width: 45px;
+    font-size: 0.75rem;
+  }
 }
 </style>

@@ -172,7 +172,12 @@ const resultCount = computed(() => filteredLogs.value.length)
   flex-direction: column;
   gap: 16px;
   padding: 16px 20px;
+  background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
+  border-radius: 12px 12px 0 0;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px var(--shadow);
+  animation: slideInDown var(--transition-base);
 }
 
 .filter-section {
@@ -190,20 +195,21 @@ const resultCount = computed(() => filteredLogs.value.length)
 }
 
 .filter-input {
-  padding: 8px 12px;
+  padding: 10px 12px;
   background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text-primary);
   font-size: 0.875rem;
   font-family: inherit;
-  transition: all 0.15s;
+  transition: all var(--transition-fast);
 }
 
 .filter-input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: var(--bg-tertiary);
 }
 
 .filter-input::placeholder {
@@ -213,31 +219,35 @@ const resultCount = computed(() => filteredLogs.value.length)
 .filter-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 
 .filter-chip {
-  padding: 6px 12px;
+  padding: 7px 14px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
   border-radius: 20px;
   font-size: 0.8125rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .filter-chip:hover {
-  background: var(--bg-primary);
   border-color: var(--accent);
   color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 2px 6px var(--shadow);
 }
 
 .filter-chip.active {
   background: var(--accent);
   border-color: var(--accent);
   color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
 /* Method colors */
@@ -284,30 +294,35 @@ const resultCount = computed(() => filteredLogs.value.length)
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 8px;
+  padding-top: 12px;
   border-top: 1px solid var(--border);
+  margin-top: 4px;
 }
 
 .clear-btn {
-  padding: 6px 14px;
+  padding: 8px 16px;
   background: var(--error);
-  border: none;
+  border: 1px solid var(--error-dark);
   border-radius: 6px;
   color: white;
   font-size: 0.8125rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .clear-btn:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
+  background: var(--error-dark);
+  border-color: var(--error-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 .result-count {
   font-size: 0.875rem;
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: 600;
 }
 </style>
